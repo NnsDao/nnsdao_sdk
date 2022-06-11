@@ -14,7 +14,7 @@ pub enum Votes{
 
 
 /// You need to use the basic methods implemented by the party
-pub trait DaoTrait {
+pub trait DaoCustomFn {
     // It is used to determine whether you are DAO member of Organization A
     async fn is_member(member: Principal) -> Result<bool, String>;
 
@@ -26,9 +26,10 @@ pub trait DaoTrait {
 }
 
 #[derive(Clone, Debug, Default, CandidType, Deserialize)]
-pub struct DaoBasic {
+pub struct DaoBasic<T:DaoCustomFn> {
     prposal: Prposal,
     next_prposal_id: u64,
+    custom_fn: T,
 }
 
 // The state of a Proposal
@@ -74,8 +75,11 @@ pub struct PrposalArg {
 }
 
 
-impl DaoBasic {
-    pub fn new() -> DaoBasic {
+impl <T> DaoBasic<T> 
+where
+    T: DaoCustomFn,
+{
+    pub fn new(custom_fn: T) -> DaoBasic {
         todo!()
     }
 
@@ -91,9 +95,9 @@ impl DaoBasic {
         todo!()
     }
 
-    pub async fn votes(&self, caller: Principal, id: u64, dao_trait: &impl DaoTrait) -> Result<bool, String> {
-        dao_trait.is_member(&caller).await?;
-        let weight = dao_trait.get_weight(&ic::caller).await?;
+    pub async fn votes(&self, caller: Principal, id: u64) -> Result<bool, String> {
+        self.custom_fn.is_member(&caller).await?;
+        let weight = self.custom_fn.get_weight(&ic::caller).await?;
         todo!()
     }
 }
