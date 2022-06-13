@@ -75,7 +75,7 @@ pub struct PrposalArg {
 }
 
 #[derive(Clone, Debug, Default, CandidType, Deserialize)]
-pub struct votesArg {
+pub struct VotesArg {
     id: u64,
     caller: Principal,
     vote: Votes,
@@ -120,7 +120,7 @@ where
         self.prposal
     }
 
-    pub async fn vote(&self, arg: votesArg) -> Result<bool, String> {
+    pub async fn vote(&self, arg: VotesArg) -> Result<bool, String> {
         self.custom_fn.is_member(&arg.caller).await?;
         let weight = self.custom_fn.get_equities(&arg.caller).await?;
         todo!()
