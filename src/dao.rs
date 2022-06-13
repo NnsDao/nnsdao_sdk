@@ -16,18 +16,18 @@ pub enum Votes{
 /// You need to use the basic methods implemented by the party
 pub trait DaoCustomFn {
     // It is used to determine whether you are DAO member of Organization A
-    async fn is_member(member: Principal) -> Result<bool, String>;
+    pub async fn is_member(member: Principal) -> Result<bool, String>;
 
     // Implement specific voting methods
-    async fn get_weight(member: Principal) -> Result<u64, String>;
+    pub async fn get_equities(member: Principal) -> Result<u64, String>;
 
     // Implement process completed proposals
-    async fn handle_prposal();
+    pub async fn handle_prposal();
 }
 
 #[derive(Clone, Debug, Default, CandidType, Deserialize)]
 pub struct DaoBasic<T:DaoCustomFn> {
-    prposal: Prposal,
+    prposal: Vec<Prposal>,
     next_prposal_id: u64,
     custom_fn: T,
 }
@@ -74,30 +74,59 @@ pub struct PrposalArg {
     end_time: u64,
 }
 
+#[derive(Clone, Debug, Default, CandidType, Deserialize)]
+pub struct votesArg {
+    id: u64,
+    caller: Principal,
+    vote: Votes,
+}
+
 
 impl <T> DaoBasic<T> 
 where
     T: DaoCustomFn,
 {
+    /// Instantiate the underlying DAO
     pub fn new(custom_fn: T) -> DaoBasic {
-        todo!()
+        DaoBasic {
+            prposal: Vec::new(),
+            next_prposal_id: 1,
+            custom_fn: custom_fn,
+        }
     }
 
-    pub fn proposal(&self, arg: PrposalArg) -> Result<bool, String> {
-        todo!()
+    /// Submit the proposal
+    pub async fn proposal(&mut self, arg: PrposalArg) -> Result<bool, String> {
+        self.custom_fn.is_member(&caller).await?;
+        let propsal = Prposal {
+            id: self.next_prposal_id,
+            proposer: arg.proposer,
+            title: arg.title,
+            content: arg.content,
+            proposal_state: ProposalState::Open,
+            vote_data: Vec::new(),
+            end_time: arg.end_time,
+            timestemp: ic_cdk::timestemp,
+        };
+        self.next_prposal_id += 1;
+        true
     }
 
     pub fn get_prposal(&self, id: u64) -> Result<Prposal, String> {
-        todo!()
+        self.prposal[id]
     }
 
     pub fn proposal_list(&self) -> Result<Vec<Prposal>, String> {
+        self.prposal
+    }
+
+    pub async fn vote(&self, arg: votesArg) -> Result<bool, String> {
+        self.custom_fn.is_member(&arg.caller).await?;
+        let weight = self.custom_fn.get_equities(&arg.caller).await?;
         todo!()
     }
 
-    pub async fn votes(&self, caller: Principal, id: u64) -> Result<bool, String> {
-        self.custom_fn.is_member(&caller).await?;
-        let weight = self.custom_fn.get_weight(&ic::caller).await?;
-        todo!()
+    pub async fn handle_prposal(&self) {
+        self.custom_fn.handle_prposal().await?;
     }
 }
