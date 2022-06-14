@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use ic_cdk::export::{candid::CandidType, Principal};
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use ic_cdk::api;
+
 
 pub type Equities = u64;
 
@@ -18,8 +21,8 @@ pub trait DaoCustomFn {
     // It is used to determine whether you are DAO member of Organization A
     async fn is_member(&self, member: Principal) -> Result<bool, String>;
 
-    // Implement specific voting methods
-    async fn get_equities(&self, member: Principal) -> Result<u64, String>;
+    // // Implement specific voting methods
+    // async fn get_equities(&self, member: Principal) -> Result<u64, String>;
 
     // Implement process completed proposals
     async fn handle_prposal(&self) -> Result<(), String>;
@@ -27,7 +30,7 @@ pub trait DaoCustomFn {
 
 #[derive(Clone, Debug, Default, CandidType, Deserialize)]
 pub struct DaoBasic<T:DaoCustomFn> {
-    prposal_list: Vec<Prposal>,
+    prposal_list: HashMap<u64, Prposal>,
     next_prposal_id: u64,
     custom_fn: T,
 }
@@ -89,7 +92,7 @@ where
     /// Instantiate the underlying DAO
     pub fn new(custom_fn: T) -> Self {
         DaoBasic {
-            prposal_list: Vec::new(),
+            prposal_list: HashMap::default(),
             next_prposal_id: 1,
             custom_fn: custom_fn,
         }
@@ -98,7 +101,7 @@ where
     /// Submit the proposal
     pub async fn proposal(&mut self, arg: PrposalArg) -> Result<(), String> {
         self.custom_fn.is_member(arg.proposer.clone()).await?;
-        let propsal = Prposal {
+        let proposal = Prposal {
             id: self.next_prposal_id,
             proposer: arg.proposer,
             title: arg.title,
@@ -108,32 +111,45 @@ where
             end_time: arg.end_time,
             timestemp: api::time(),
         };
-        self.prposal_list.push(propsal);
+        self.prposal_list.insert(self.next_prposal_id, proposal);
         self.next_prposal_id += 1;
         Ok(())
     }
 
     pub fn get_prposal(&self, id: u64) -> Result<Prposal, String>{
-        for proposal in self.prposal_list.iter() {
-            if proposal.id == id {
-                return Ok(proposal.clone());
-            }
+        match self.prposal_list.get(&id) {
+            None => return Err(String::from("no prposal")),
+            Some(prposal) => return Ok(prposal.clone()),
         }
-        Err(String::from("no prposal"))
     }
 
-    pub fn proposal_list(&self) -> Vec<Prposal> {
+    pub fn proposal_list(&self) -> HashMap<u64,Prposal> {
         self.prposal_list.clone()
     }
 
-    pub async fn vote(&self, arg: VotesArg) -> Result<bool, String> {
+    pub async fn vote(&mut self, arg: VotesArg) -> Result<(), String> {
         self.custom_fn.is_member(arg.caller.clone()).await?;
-        let weight = self.custom_fn.get_equities(arg.caller.clone()).await?;
-        todo!()
+        if let Some(prposal) = self.prposal_list.get_mut(&arg.id) {
+            for data in prposal.vote_data.iter() {
+                if data.0 == arg.caller {
+                    return Err(String::from("Users have voted"));
+                }
+            }
+            prposal.vote_data.push((arg.caller.clone(), arg.vote))
+        } else {
+            return Err(String::from("The proposal does not exist"));
+        }
+        Ok(())
     }
 
     pub async fn handle_prposal(&self) -> Result<(), String>{
         self.custom_fn.handle_prposal().await?;
         Ok(())
     }
+
+    pub fn change_prposal_state() -> Result<(), String> {
+        todo!();
+        Ok(())
+    }
 }
+
