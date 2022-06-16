@@ -109,7 +109,8 @@ where
             proposal_state: ProposalState::Open,
             vote_data: Vec::new(),
             end_time: arg.end_time,
-            timestemp: api::time(),
+            // timestemp: api::time(),
+            timestemp: 1,
         };
         self.prposal_list.insert(self.next_prposal_id, proposal);
         self.next_prposal_id += 1;
@@ -117,10 +118,7 @@ where
     }
 
     pub fn get_prposal(&self, id: u64) -> Result<Prposal, String>{
-        match self.prposal_list.get(&id) {
-            None => return Err(String::from("no prposal")),
-            Some(prposal) => return Ok(prposal.clone()),
-        }
+        self.prposal_list.get(&id).ok_or(String::from("no prposal")).cloned()
     }
 
     pub fn proposal_list(&self) -> HashMap<u64,Prposal> {
@@ -147,9 +145,47 @@ where
         Ok(())
     }
 
-    pub fn change_prposal_state() -> Result<(), String> {
+    pub fn change_prposal_state(&mut self, id: u64, state: ProposalState) -> Result<(), String> {
         todo!();
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ic_cdk::export::{candid::CandidType, Principal};
+    #[derive(Clone, Debug, Default, CandidType, Deserialize)]
+    struct CustomFn{}
+
+    #[async_trait]
+    impl DaoCustomFn for CustomFn {
+        async fn is_member(&self, member: Principal) -> Result<bool, String> {
+            Ok(true)
+        }
+        async fn handle_prposal(&self) -> Result<(), String> {
+            Ok(())
+        }
+    }
+    #[actix_rt::test]
+    async fn test_get_prposal_err() {
+        let dao_basic = DaoBasic::new(CustomFn::default());
+        assert_eq!(dao_basic.get_prposal(1).is_err(), true);
+    }
+
+    #[actix_rt::test]
+    async fn test_get_prposal_ok() {
+        let mut dao_basic = DaoBasic::new(CustomFn::default());
+        let new_proposal = PrposalArg {
+            proposer: Principal::from_text(String::from("c526v-pnjpe-x57vs-xe3qb-idgh7-xre3a-jdzef-l654c-5sg4x-5iigp-xae")).unwrap(),
+            title: "aaa".to_owned(),
+            content: "aaa".to_owned(),
+            end_time: 11111,
+        };
+        _ = dao_basic.proposal(new_proposal).await;
+        println!("{:?}", dao_basic.get_prposal(1));
+        assert_eq!(dao_basic.get_prposal(1).is_ok(), true);
+    }
+}
+
 
