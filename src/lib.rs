@@ -84,6 +84,11 @@ pub struct VotesArg {
     vote: Votes,
 }
 
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct ChangePrposalStateArg {
+    id: u64,
+    state: ProposalState
+}
 
 impl <T> DaoBasic<T> 
 where
@@ -145,8 +150,36 @@ where
         Ok(())
     }
 
-    pub fn change_prposal_state(&mut self, id: u64, state: ProposalState) -> Result<(), String> {
-        todo!();
+    pub fn change_prposal_state(&mut self, arg: ChangePrposalStateArg) -> Result<(), String> {
+        if let Some(prposal) = self.prposal_list.get_mut(&arg.id) {
+            if prposal.end_time <= api::time() {
+                return Err(String::from("Proposal time is not over"));
+            }
+            match prposal.proposal_state {
+                ProposalState::Open => {
+                    if arg.state != ProposalState::Accepted || arg.state != ProposalState::Rejected {
+                        return Err(String::from("Failed to change status, the logic of the status parameter is incorrect"));
+                    }
+                    prposal.proposal_state = arg.state
+                }
+                ProposalState::Accepted | ProposalState::Rejected => {
+                    if arg.state != ProposalState::Executing {
+                        return Err(String::from("Failed to change status, the logic of the status parameter is incorrect"));
+                    }
+                    prposal.proposal_state = arg.state
+                }
+                ProposalState::Executing => {
+                    match arg.state {
+                        ProposalState::Succeeded => prposal.proposal_state = ProposalState::Succeeded,
+                        ProposalState::Failed(reason) =>  prposal.proposal_state = ProposalState::Failed(reason),
+                        _ => return Err(String::from("Failed to change status, the logic of the status parameter is incorrect")),
+                    }
+                }
+                _ => return Err(String::from("Failed to change status, the logic of the status parameter is incorrect")),
+            }
+        } else {
+            return Err(String::from("no prposal"))
+        }
         Ok(())
     }
 }
@@ -187,5 +220,6 @@ mod test {
         assert_eq!(dao_basic.get_prposal(1).is_ok(), true);
     }
 }
+
 
 
