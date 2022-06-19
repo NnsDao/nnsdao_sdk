@@ -3,6 +3,7 @@ name = "nnsdao_sdk_basic"
 version = "0.1.0"
 authors = ["NNSDAO"]
 edition = "2021"
+description = "Basic functionality to build a DAO."
 license = "Apache-2.0"
 keywords = ["nnsdao", "dao", "ICP", "dfinity", "internet-computer"]
 readme = "README.md"
