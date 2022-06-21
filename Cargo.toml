@@ -1,6 +1,6 @@
 [package]
 name = "nnsdao_sdk_basic"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["NNSDAO"]
 edition = "2021"
 description = "Basic functionality to build a DAO."
