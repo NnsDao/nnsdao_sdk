@@ -19,21 +19,20 @@
 
 use std::collections::HashMap;
 
-use ic_cdk::export::{candid::CandidType, Principal};
-use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use ic_cdk::api;
+use ic_cdk::export::{candid::CandidType, Principal};
+use serde::{Deserialize, Serialize};
 
 /// Voting weight
 pub type Equities = u64;
 
 /// Votes with weights
 #[derive(CandidType, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum Votes{
+pub enum Votes {
     Yes(Equities),
     No(Equities),
 }
-
 
 /// You need to use the basic methods implemented by the party
 #[async_trait]
@@ -44,7 +43,6 @@ pub trait DaoCustomFn {
     /// Implement process completed proposals
     async fn handle_proposal(&self) -> Result<(), String>;
 }
-
 
 /// The state of a Proposal
 #[derive(CandidType, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -69,7 +67,7 @@ pub enum ProposalState {
 }
 
 /// Proposal unit structure
-#[derive(Clone, Debug, CandidType, Deserialize)]
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct Proposal {
     id: u64,
     proposer: Principal,
@@ -78,9 +76,8 @@ pub struct Proposal {
     proposal_state: ProposalState,
     vote_data: Vec<(Principal, Votes)>,
     end_time: u64,
-    timestemp: u64,
+    timestamp: u64,
 }
-
 
 /// Create parameters for the proposal
 #[derive(Clone, Debug, CandidType, Deserialize)]
@@ -94,28 +91,28 @@ pub struct ProposalArg {
 /// Voting parameters
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct VotesArg {
-    id: u64,
-    caller: Principal,
-    vote: Votes,
+    pub id: u64,
+    pub caller: Principal,
+    pub vote: Votes,
 }
 
 /// Change proposal status parameters
 #[derive(Clone, Debug, CandidType, Deserialize)]
-pub struct ChangeproposalStateArg {
+pub struct ChangeProposalStateArg {
     pub id: u64,
-    pub state: ProposalState
+    pub state: ProposalState,
 }
 
 /// Basic DAO structure
-#[derive(Clone, Debug, Default, CandidType, Deserialize)]
-pub struct DaoBasic<T:DaoCustomFn> {
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
+pub struct DaoBasic<T: DaoCustomFn> {
     pub proposal_list: HashMap<u64, Proposal>,
     pub next_proposal_id: u64,
     pub custom_fn: T,
 }
 
 /// Implements the most basic DAO functionality
-impl <T> DaoBasic<T> 
+impl<T> DaoBasic<T>
 where
     T: DaoCustomFn,
 {
@@ -124,7 +121,7 @@ where
         DaoBasic {
             proposal_list: HashMap::default(),
             next_proposal_id: 1,
-            custom_fn: custom_fn,
+            custom_fn,
         }
     }
 
@@ -139,18 +136,21 @@ where
             proposal_state: ProposalState::Open,
             vote_data: Vec::new(),
             end_time: arg.end_time,
-            timestemp: api::time(),
+            timestamp: api::time(),
         };
         self.proposal_list.insert(self.next_proposal_id, proposal);
         self.next_proposal_id += 1;
         Ok(())
     }
 
-    pub fn get_proposal(&self, id: u64) -> Result<Proposal, String>{
-        self.proposal_list.get(&id).ok_or(String::from("no proposal")).cloned()
+    pub fn get_proposal(&self, id: u64) -> Result<Proposal, String> {
+        self.proposal_list
+            .get(&id)
+            .ok_or(String::from("no proposal"))
+            .cloned()
     }
 
-    pub fn proposal_list(&self) -> HashMap<u64,Proposal> {
+    pub fn proposal_list(&self) -> HashMap<u64, Proposal> {
         self.proposal_list.clone()
     }
 
@@ -169,19 +169,20 @@ where
         Ok(())
     }
 
-    pub async fn handle_proposal(&self) -> Result<(), String>{
+    pub async fn handle_proposal(&self) -> Result<(), String> {
         self.custom_fn.handle_proposal().await?;
         Ok(())
     }
 
-    pub fn change_proposal_state(&mut self, arg: ChangeproposalStateArg) -> Result<(), String> {
+    pub fn change_proposal_state(&mut self, arg: ChangeProposalStateArg) -> Result<(), String> {
         if let Some(proposal) = self.proposal_list.get_mut(&arg.id) {
             if proposal.end_time <= api::time() {
                 return Err(String::from("Proposal time is not over"));
             }
             match proposal.proposal_state {
                 ProposalState::Open => {
-                    if arg.state != ProposalState::Accepted || arg.state != ProposalState::Rejected {
+                    if arg.state != ProposalState::Accepted || arg.state != ProposalState::Rejected
+                    {
                         return Err(String::from("Failed to change status, the logic of the status parameter is incorrect"));
                     }
                     proposal.proposal_state = arg.state
@@ -192,17 +193,23 @@ where
                     }
                     proposal.proposal_state = arg.state
                 }
-                ProposalState::Executing => {
-                    match arg.state {
-                        ProposalState::Succeeded => proposal.proposal_state = ProposalState::Succeeded,
-                        ProposalState::Failed(reason) =>  proposal.proposal_state = ProposalState::Failed(reason),
-                        _ => return Err(String::from("Failed to change status, the logic of the status parameter is incorrect")),
+                ProposalState::Executing => match arg.state {
+                    ProposalState::Succeeded => proposal.proposal_state = ProposalState::Succeeded,
+                    ProposalState::Failed(reason) => {
+                        proposal.proposal_state = ProposalState::Failed(reason)
                     }
+                    _ => return Err(String::from(
+                        "Failed to change status, the logic of the status parameter is incorrect",
+                    )),
+                },
+                _ => {
+                    return Err(String::from(
+                        "Failed to change status, the logic of the status parameter is incorrect",
+                    ))
                 }
-                _ => return Err(String::from("Failed to change status, the logic of the status parameter is incorrect")),
             }
         } else {
-            return Err(String::from("no proposal"))
+            return Err(String::from("no proposal"));
         }
         Ok(())
     }
@@ -244,6 +251,3 @@ where
 //         assert_eq!(dao_basic.get_proposal(1).is_ok(), true);
 //     }
 // }
-
-
-
