@@ -69,14 +69,14 @@ pub enum ProposalState {
 /// Proposal unit structure
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct Proposal {
-    id: u64,
-    proposer: Principal,
-    title: String,
-    content: String,
-    proposal_state: ProposalState,
-    vote_data: Vec<(Principal, Votes)>,
-    end_time: u64,
-    timestamp: u64,
+    pub id: u64,
+    pub proposer: Principal,
+    pub title: String,
+    pub content: String,
+    pub proposal_state: ProposalState,
+    pub vote_data: Vec<(Principal, Votes)>,
+    pub end_time: u64,
+    pub timestamp: u64,
 }
 
 /// Create parameters for the proposal
@@ -126,7 +126,7 @@ where
     }
 
     /// Submit the proposal
-    pub async fn proposal(&mut self, arg: ProposalArg) -> Result<(), String> {
+    pub async fn proposal(&mut self, arg: ProposalArg) -> Result<Proposal, String> {
         self.custom_fn.is_member(arg.proposer.clone()).await?;
         let proposal = Proposal {
             id: self.next_proposal_id,
@@ -138,9 +138,10 @@ where
             end_time: arg.end_time,
             timestamp: api::time(),
         };
-        self.proposal_list.insert(self.next_proposal_id, proposal);
+        self.proposal_list
+            .insert(self.next_proposal_id, proposal.clone());
         self.next_proposal_id += 1;
-        Ok(())
+        Ok(proposal)
     }
 
     pub fn get_proposal(&self, id: u64) -> Result<Proposal, String> {
