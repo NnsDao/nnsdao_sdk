@@ -182,7 +182,7 @@ where
             }
             match proposal.proposal_state {
                 ProposalState::Open => {
-                    if arg.state != ProposalState::Accepted || arg.state != ProposalState::Rejected
+                    if arg.state != ProposalState::Accepted && arg.state != ProposalState::Rejected
                     {
                         return Err(String::from("Failed to change status, the logic of the status parameter is incorrect"));
                     }
