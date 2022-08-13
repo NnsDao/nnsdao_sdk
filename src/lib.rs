@@ -69,7 +69,7 @@ pub enum ProposalState {
 }
 
 /// Proposal unit structure
-#[derive(Clone, Debug, CandidType, Deserialize)]
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct Proposal {
     id: u64,
     proposer: Principal,
@@ -77,37 +77,39 @@ pub struct Proposal {
     content: String,
     proposal_state: ProposalState,
     vote_data: Vec<(Principal, Votes)>,
+    property: Option<HashMap<String,String>>,
     end_time: u64,
     timestemp: u64,
 }
 
 
 /// Create parameters for the proposal
-#[derive(Clone, Debug, CandidType, Deserialize)]
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct ProposalArg {
     pub proposer: Principal,
     pub title: String,
     pub content: String,
+    pub property: Option<HashMap<String,String>>,
     pub end_time: u64,
 }
 
 /// Voting parameters
-#[derive(Clone, Debug, CandidType, Deserialize)]
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct VotesArg {
-    id: u64,
-    caller: Principal,
-    vote: Votes,
+    pub id: u64,
+    pub caller: Principal,
+    pub vote: Votes,
 }
 
 /// Change proposal status parameters
-#[derive(Clone, Debug, CandidType, Deserialize)]
+#[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct ChangeproposalStateArg {
     pub id: u64,
     pub state: ProposalState
 }
 
 /// Basic DAO structure
-#[derive(Clone, Debug, Default, CandidType, Deserialize)]
+#[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
 pub struct DaoBasic<T:DaoCustomFn> {
     pub proposal_list: HashMap<u64, Proposal>,
     pub next_proposal_id: u64,
@@ -138,6 +140,7 @@ where
             content: arg.content,
             proposal_state: ProposalState::Open,
             vote_data: Vec::new(),
+            property: arg.property,
             end_time: arg.end_time,
             timestemp: api::time(),
         };
@@ -244,6 +247,3 @@ where
 //         assert_eq!(dao_basic.get_proposal(1).is_ok(), true);
 //     }
 // }
-
-
-
