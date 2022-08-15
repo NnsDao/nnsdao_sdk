@@ -75,7 +75,7 @@ pub struct Proposal {
     pub content: String,
     pub proposal_state: ProposalState,
     pub vote_data: Vec<(Principal, Votes)>,
-    pub property: Option<HashMap<String,String>>,
+    pub property: Option<HashMap<String, String>>,
     pub end_time: u64,
     pub timestamp: u64,
 }
@@ -86,7 +86,7 @@ pub struct ProposalArg {
     pub proposer: Principal,
     pub title: String,
     pub content: String,
-    pub property: Option<HashMap<String,String>>,
+    pub property: Option<HashMap<String, String>>,
     pub end_time: u64,
 }
 
@@ -100,14 +100,14 @@ pub struct VotesArg {
 
 /// Change proposal status parameters
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-pub struct ChangeproposalStateArg {
+pub struct ChangeProposalStateArg {
     pub id: u64,
     pub state: ProposalState,
 }
 
 /// Basic DAO structure
 #[derive(Clone, Debug, Default, CandidType, Deserialize, Serialize)]
-pub struct DaoBasic<T:DaoCustomFn> {
+pub struct DaoBasic<T: DaoCustomFn> {
     pub proposal_list: HashMap<u64, Proposal>,
     pub next_proposal_id: u64,
     pub custom_fn: T,
@@ -178,7 +178,7 @@ where
         Ok(())
     }
 
-    pub fn change_proposal_state(&mut self, arg: ChangeproposalStateArg) -> Result<(), String> {
+    pub fn change_proposal_state(&mut self, arg: ChangeProposalStateArg) -> Result<(), String> {
         if let Some(proposal) = self.proposal_list.get_mut(&arg.id) {
             if proposal.end_time <= api::time() {
                 return Err(String::from("Proposal time is not over"));
