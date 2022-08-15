@@ -180,7 +180,7 @@ where
 
     pub fn change_proposal_state(&mut self, arg: ChangeProposalStateArg) -> Result<(), String> {
         if let Some(proposal) = self.proposal_list.get_mut(&arg.id) {
-            if proposal.end_time <= api::time() {
+            if proposal.end_time >= api::time() {
                 return Err(String::from("Proposal time is not over"));
             }
             match proposal.proposal_state {
